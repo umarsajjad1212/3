@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HUD Style AR Product Viewer - Responsive</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', Courier, monospace;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            background-color: #030a0d;
+            overflow: hidden;
+            color: #00ffcc;
+        }
+
+        /* Ambient HUD Grid Background */
+        .hud-bg-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 204, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 204, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* 3D Model Viewer Layout - Default Desktop */
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 2;
+            --poster-color: transparent;
+        }
+
+        /* HUD UI Overlay Container */
+        .hud-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            pointer-events: none;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .interactive {
+            pointer-events: auto;
+        }
+
+        /* Sci-Fi Vignette and Borders */
+        .hud-frame {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            bottom: 15px;
+            border: 1px solid rgba(0, 255, 204, 0.2);
+            pointer-events: none;
+        }
+        .hud-frame::before {
+            content: '';
+            position: absolute;
+            top: -1px; left: -1px; width: 20px; height: 20px;
+            border-top: 3px solid #00ffcc; border-left: 3px solid #00ffcc;
+        }
+        .hud-frame::after {
+            content: '';
+            position: absolute;
+            bottom: -1px; right: -1px; width: 20px; height: 20px;
+            border-bottom: 3px solid #00ffcc; border-right: 3px solid #00ffcc;
+        }
+
+        /* Left Sidebar: Product Details (Desktop Default) */
+        .product-details {
+            background: rgba(3, 10, 13, 0.8);
+            border-left: 4px solid #00ffcc;
+            padding: 20px;
+            width: 290px;
+            margin-top: 20px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.1);
+            border-top: 1px solid rgba(0, 255, 204, 0.2);
+            border-bottom: 1px solid rgba(0, 255, 204, 0.2);
+            border-right: 1px solid rgba(0, 255, 204, 0.2);
+            
+            /* Hidden initially, appears after scanning */
+            opacity: 0;
+            transform: translateX(-20px);
+            animation: fadeInRight 0.8s ease-out 4.2s forwards;
+        }
+
+        .hud-header {
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: rgba(0, 255, 204, 0.5);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .detail-row {
+            margin-bottom: 15px;
+        }
+
+        .detail-label {
+            font-size: 11px;
+            color: rgba(0, 255, 204, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .detail-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 0 0 8px rgba(0, 255, 204, 0.6);
+            margin-top: 2px;
+        }
+
+        .sizes-container {
+            display: flex;
+            gap: 6px;
+            margin-top: 5px;
+        }
+
+        .size-badge {
+            border: 1px solid #00ffcc;
+            padding: 4px 8px;
+            font-size: 12px;
+            color: #00ffcc;
+            background: rgba(0, 255, 204, 0.1);
+        }
+
+        /* Bottom Section */
+        .bottom-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        /* Recommendation Badge */
+        .recommendation-badge {
+            font-size: 14px;
+            letter-spacing: 3px;
+            color: #00ffcc;
+            background: rgba(0, 255, 204, 0.15);
+            padding: 10px 25px;
+            border: 1px solid #00ffcc;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.2);
+            margin-bottom: 20px;
+            text-shadow: 0 0 5px #00ffcc;
+            
+            /* Hidden initially, appears after scanning */
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s ease-out 4.5s forwards;
+        }
+
+        /* AR Button HUD Style */
+        .ar-button {
+            background: transparent;
+            color: #00ffcc;
+            border: 2px solid #00ffcc;
+            padding: 12px 35px;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.2);
+            transition: all 0.3s ease;
+            
+            /* Hidden initially, appears after scanning */
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s ease-out 4.8s forwards;
+        }
+
+        .ar-button:hover {
+            background: #00ffcc;
+            color: #030a0d;
+            box-shadow: 0 0 25px rgba(0, 255, 204, 0.6);
+        }
+
+        /* Holographic Scanning Effect Line */
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to bottom, transparent, #00ffcc, transparent);
+            box-shadow: 0 0 20px #00ffcc, 0 0 40px #00ffcc;
+            z-index: 4;
+            pointer-events: none;
+            animation: scanAnim 2s linear 2; /* 2 Seconds per scan * 2 times = 4s total */
+            animation-fill-mode: forwards;
+        }
+
+        /* Scanning Status Overlay Text */
+        .scan-status {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            animation: pulse 1s infinite alternate;
+            z-index: 5;
+            pointer-events: none;
+            background: rgba(3, 10, 13, 0.85);
+            padding: 15px 30px;
+            border: 1px dashed #00ffcc;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+        }
+
+        /* HUD Crosshairs decoration */
+        .crosshair {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border: 1px solid rgba(0, 255, 204, 0.4);
+            pointer-events: none;
+        }
+        .ch-tl { top: 40px; left: 40px; border-right: 0; border-bottom: 0; }
+        .ch-tr { top: 40px; right: 40px; border-left: 0; border-bottom: 0; }
+        .ch-bl { bottom: 40px; left: 40px; border-right: 0; border-top: 0; }
+        .ch-br { bottom: 40px; right: 40px; border-left: 0; border-top: 0; }
+
+        /* Keyframe Animations */
+        @keyframes scanAnim {
+            0% { top: 0%; opacity: 1; }
+            50% { top: 100%; opacity: 1; }
+            100% { top: 0%; opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.3; text-shadow: 0 0 2px #00ffcc; }
+            100% { opacity: 1; text-shadow: 0 0 15px #00ffcc; }
+        }
+
+        @keyframes fadeInRight {
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes fadeInUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ==========================================================================
+           RESPONSIVE CODE FOR MOBILE SCREENS (Fixes overlapping and cutoff issue)
+           ========================================================================== */
+        @media (max-width: 768px) {
+            .hud-overlay {
+                padding: 15px;
+                justify-content: space-between; 
+            }
+
+            /* Details panel transitions into an optimized top banner on mobile */
+            .product-details {
+                width: 100%; 
+                margin-top: 25px;
+                background: rgba(3, 10, 13, 0.65); 
+                padding: 12px;
+                border-left: 3px solid #00ffcc;
+                border-right: none;
+                border-top: none;
+                border-bottom: none;
+            }
+
+            .detail-row {
+                margin-bottom: 6px;
+                display: flex;
+                align-items: center;
+                gap: 10px; 
+            }
+
+            .detail-label {
+                font-size: 10px;
+                min-width: 65px;
+            }
+
+            .detail-value {
+                font-size: 14px;
+                margin-top: 0;
+            }
+
+            .sizes-container {
+                margin-top: 0;
+                gap: 4px;
+            }
+
+            .size-badge {
+                padding: 2px 6px;
+                font-size: 10px;
+            }
+
+            .hud-header {
+                margin-bottom: 6px;
+                font-size: 8px;
+            }
+
+            /* Pushes the 3D Model down so it occupies the clear center space */
+            model-viewer {
+                height: 65%;
+                top: 20%;
+            }
+
+            .recommendation-badge {
+                font-size: 11px;
+                padding: 8px 15px;
+                margin-bottom: 12px;
+                letter-spacing: 1.5px;
+            }
+
+            .ar-button {
+                padding: 10px 25px;
+                font-size: 12px;
+                width: 100%; 
+            }
+            
+            .scan-status {
+                font-size: 14px;
+                padding: 10px 20px;
+                width: 80%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hud-bg-grid"></div>
+    <div class="hud-frame"></div>
+    <div class="crosshair ch-tl"></div>
+    <div class="crosshair ch-tr"></div>
+    <div class="crosshair ch-bl"></div>
+    <div class="crosshair ch-br"></div>
+
+    <div class="scan-line" id="scanLine"></div>
+    <div class="scan-status" id="scanStatus">ANALYZING PRODUCT...</div>
+
+    <model-viewer 
+        id="shoeModel"
+        src="sneakers.glb" 
+        alt="HUD Scanner Sneakers" 
+        ar 
+        ar-modes="webxr scene-viewer quick-look" 
+        camera-controls 
+        auto-rotate 
+        interaction-prompt="none"
+        shadow-intensity="1">
+        
+        <button slot="ar-button" id="hiddenArBtn" style="display:none;"></button>
+    </model-viewer>
+
+    <div class="hud-overlay">
+        
+        <div class="product-details">
+            <div class="hud-header">// DATA_LOADED //</div>
+            
+            <div class="detail-row">
+                <div class="detail-label">PRODUCT:</div>
+                <div class="detail-value">Sneakers</div>
+            </div>
+            
+            <div class="detail-row">
+                <div class="detail-label">COLOR:</div>
+                <div class="detail-value" style="color: #fff; text-shadow: 0 0 5px #00ffcc;">Black</div>
+            </div>
+            
+            <div class="detail-row">
+                <div class="detail-label">SIZE:</div>
+                <div class="sizes-container">
+                    <div class="size-badge">7</div>
+                    <div class="size-badge">8</div>
+                    <div class="size-badge">9</div>
+                    <div class="size-badge">10</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-container">
+            <div class="recommendation-badge">
+                Highly Recommended Product
+            </div>
+
+            <button class="ar-button interactive" onclick="openAR()">
+                View in AR
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const statusText = document.getElementById('scanStatus');
+        const greenLine = document.getElementById('scanLine');
+
+        // Total scanning time is 4 seconds (2 scans of 2s each)
+        // Uske baad scanner animations ko hide kar diya jayega
+        setTimeout(() => {
+            if (statusText) statusText.style.display = 'none';
+            if (greenLine) greenLine.style.display = 'none';
+        }, 4000);
+
+        // Custom HUD button action to trigger model-viewer's built-in AR
+        function openAR() {
+            const nativeBtn = document.getElementById('hiddenArBtn');
+            if (nativeBtn) {
+                nativeBtn.click();
+            } else {
+                alert("AR mode feature is loading or not supported on this device.");
+            }
+        }
+    </script>
+</body>
+</html>
